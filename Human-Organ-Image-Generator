@@ -1,0 +1,51 @@
+!pip install diffusers transformers accelerate torch torchvision --quiet
+
+import torch
+from diffusers import StableDiffusionPipeline
+import matplotlib.pyplot as plt
+from PIL import Image
+import uuid
+import IPython.display as display
+import sys
+
+valid_organs = {
+    "heart", "brain", "lungs", "liver", "kidney", "stomach", "intestines",
+    "pancreas", "spleen", "bladder", "gallbladder", "esophagus", "trachea",
+    "thyroid", "uterus", "prostate", "ovary", "colon", "rectum", "skin",
+    "eye", "ear", "tongue", "nose", "diaphragm", "appendix"
+}
+
+if not torch.cuda.is_available():
+    sys.exit("GPU not available. Please enable GPU in Runtime > Change runtime type > GPU.")
+
+device = "cuda"
+
+pipe = StableDiffusionPipeline.from_pretrained(
+    "runwayml/stable-diffusion-v1-5",
+    torch_dtype=torch.float16
+).to(device)
+
+def generate_organ_image(organ_name):
+    prompt = f"high-quality anatomical medical illustration of a human {organ_name}, detailed, labeled, medical diagram, realistic"
+    image = pipe(prompt).images[0]
+    return image
+
+while True:
+    organ = input("Enter an organ name (type 'exit' to stop): ").strip().lower()
+    if organ == "exit":
+        break
+    elif organ not in valid_organs:
+        print("Invalid organ name. Try again.\n")
+        continue
+
+    image = generate_organ_image(organ)
+    filename = f"/content/{organ.replace(' ', '_')}_{uuid.uuid4().hex[:8]}.png"
+    image.save(filename)
+
+    display.display(display.HTML(f'<h4>{organ.capitalize()}</h4><a href="{filename}" target="_blank">View Image in New Tab</a>'))
+
+    plt.imshow(image)
+    plt.axis("off")
+    plt.title(f"Generated Image of {organ.capitalize()}")
+    plt.show()
+
